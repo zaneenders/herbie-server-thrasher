@@ -112,3 +112,27 @@ let easier = """
 let simple = """
     (FPCore (x) (- (sqrt (+ x 1))))
     """
+
+enum Tutorial {
+    static let cancel_like_terms = """
+        (FPCore (x)
+            :name "Cancel like terms"
+            (- (+ 1 x) x))
+        """
+    static let commute_and_associate = """
+        (FPCore (x y z)
+            :name "Commute and associate"
+            (- (+ (+ x y) z) (+ x (+ y z))))
+        """
+}
+
+func jsonReady(_ fpcore: String) -> String {
+    let quote_in = """
+        \"
+        """
+    let quote_out = """
+        \\\"
+        """
+    return fpcore.replacingOccurrences(of: "\n", with: "\\n")
+        .replacingOccurrences(of: quote_in, with: quote_out)
+}

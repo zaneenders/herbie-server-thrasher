@@ -1,6 +1,6 @@
 import AsyncHTTPClient
-import NIOCore
 import Foundation
+import NIOCore
 @preconcurrency import _NIOFileSystem
 
 @main
@@ -26,7 +26,7 @@ struct HerbieServerThrasher {
         var sampleReq = HTTPClientRequest(url: "\(serverURL)/api/sample")
         sampleReq.method = .POST
         let bodyString = """
-            {"formula":"\(simple)","seed":5}
+            {"formula":"\(jsonReady(det44))","seed":5}
             """
         sampleReq.body = HTTPClientRequest.Body.bytes(ByteBuffer(string: bodyString))
         let sampleRes = try await HTTPClient.shared.execute(sampleReq, timeout: .seconds(30))
@@ -36,8 +36,7 @@ struct HerbieServerThrasher {
             print(sampleBody)
             throw ServerThrasherError.sampleFailed
         }
-        let json = try JSONDecoder().decode(SampleRSP.self, from: sampleResBuffer)
-        print(json.points.count)
+
         let cwd = try await FileSystem.shared.currentWorkingDirectory
         let fh = try await FileSystem.shared.openFile(
             forWritingAt: cwd.appending("sample.json"), options: .modifyFile(createIfNecessary: true))
@@ -45,5 +44,8 @@ struct HerbieServerThrasher {
         try await writer.write(contentsOf: sampleResBuffer)
         try await writer.flush()
         try await fh.close()
+
+        let json = try JSONDecoder().decode(SampleRSP.self, from: sampleResBuffer)
+        print(json.points.count)
     }
 }
