@@ -2,37 +2,54 @@ import AsyncHTTPClient
 import Foundation
 import NIOCore
 @preconcurrency import _NIOFileSystem
+import FPCore
 
 // let serverURL = "https://herbie.uwplse.org/demo"
-let serverURL = "http://localhost:8000"
+let serverURL = "http://192.168.0.9:8000"
 let readBufferSize = 10 * 1024 * 1024  // 10 MB because sometimes fat json
 
 @main
 struct HerbieServerThrasher {
     public static func main() async throws {
         print("Hello from Herbie server thrasher.")
+        
+        var cwd = try await FileSystem.shared.currentWorkingDirectory
+        cwd.removeLastComponent()
+        cwd.append("herbie")
+        cwd.append("bench")
+        cwd.append("demo.fpcore")
+        let fh = try await FileSystem.shared.openFile(forReadingAt: cwd)
+        let info = try await fh.info()
+        let buffer = try await fh.readToEnd(maximumSizeAllowed: .bytes(info.size))
+        try await fh.close()
+        let fpCores = String(buffer: buffer)
+        let tokens = try tokens(fpCores)
+        let cores = parse(tokens)
+        print("cwd: \(cwd)")
 
         try await up()
-        let fpcore = det44
-        let sampleRSP = try await sample(fpcore)
-        // Maybe just sample one point.
-        let point = sampleRSP.points[420]
-        let localErrorTree = try await localError(fpcore, point)
-        let explain = try await explain(fpcore, point)
-        let analysis = try await analyze(fpcore, sampleRSP.points)
-        let cost = try await cost(fpcore, sampleRSP.points)
-        let alts = try await alternatives(fpcore, sampleRSP.points)
-        let mathjs = try await mathJS(fpcore)
-        print(alts)
-
-        // let cwd = try await FileSystem.shared.currentWorkingDirectory
-        // let fh = try await FileSystem.shared.openFile(
-        //     forWritingAt: cwd.appending("sample.json"), options: .modifyFile(createIfNecessary: true))
-        // var writer = fh.bufferedWriter()
-        // try await writer.write(contentsOf: sampleBody.utf8)
-        // try await writer.flush()
-        // try await fh.close()
+        try await withThrowingDiscardingTaskGroup { group in
+            for core in cores {
+                group.addTask {
+                    // print("sent: \(core)")
+                    try await callAll(core.description, 420)
+                }
+            }
+        }
     }
+}
+
+func callAll(_ fpcore: String, _ point: Int) async throws {
+    let sampleRSP = try await sample(fpcore)
+    // Maybe just sample one point.
+    let point = sampleRSP.points[point]
+    let localErrorTree = try await localError(fpcore, point)
+    let explain = try await explain(fpcore, point)
+    let analysis = try await analyze(fpcore, sampleRSP.points)
+    let cost = try await cost(fpcore, sampleRSP.points)
+    let alts = try await alternatives(fpcore, sampleRSP.points)
+    let mathjs = try await mathJS(fpcore)
+    // print("done with: \(fpcore)")
 }
 
 func cost(_ fpCore: String, _ samples: [[PointElement]]) async throws -> CostRSP {
