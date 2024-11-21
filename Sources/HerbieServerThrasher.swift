@@ -1,8 +1,35 @@
 import AsyncHTTPClient
+import FPCore
 import Foundation
 import NIOCore
+import Testing
 @preconcurrency import _NIOFileSystem
-import FPCore
+
+@Test func testMemory() async throws {
+    let main = try await getTimeline("/Users/zane/Downloads/main.json")
+    let other = try await getTimeline("/Users/zane/Downloads/server.json")
+    var main_sum = 0
+    var other_sum = 0
+    for row in main {
+        main_sum += row.memory[0][1]
+    }
+    for row in other {
+        other_sum += row.memory[0][1]
+    }
+    print(abs(main_sum - other_sum))
+}
+
+func getTimeline(_ path: String) async throws -> TimeLine {
+    let decoder = JSONDecoder()
+    let fh = try await FileSystem.shared.openFile(forReadingAt: FilePath(path))
+    let info = try await fh.info()
+    let buffer = try await fh.readToEnd(maximumSizeAllowed: .bytes(info.size))
+    try await fh.close()
+    return try decoder.decode(
+        TimeLine.self,
+        from: String(buffer: buffer).data(
+            using: .utf8)!)
+}
 
 // let serverURL = "https://herbie.uwplse.org/demo"
 let serverURL = "http://192.168.0.9:8000"
@@ -12,7 +39,6 @@ let readBufferSize = 10 * 1024 * 1024  // 10 MB because sometimes fat json
 struct HerbieServerThrasher {
     public static func main() async throws {
         print("Hello from Herbie server thrasher.")
-        
         var cwd = try await FileSystem.shared.currentWorkingDirectory
         cwd.removeLastComponent()
         cwd.append("herbie")
